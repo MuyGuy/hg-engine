@@ -2494,6 +2494,7 @@ levelup SPECIES_KOFFING
     learnset MOVE_SELF_DESTRUCT, 25
     learnset MOVE_GYRO_BALL, 29
     learnset MOVE_SLUDGE_BOMB, 32
+	learnset MOVE_STRANGE_STEAM, 35
     learnset MOVE_TOXIC, 36
     learnset MOVE_BELCH, 40
     learnset MOVE_EXPLOSION, 40
@@ -16621,6 +16622,7 @@ levelup SPECIES_GOOMY
     learnset MOVE_RAIN_DANCE, 27
     learnset MOVE_DRAGON_PULSE, 38
     learnset MOVE_BODY_SLAM, 38
+	learnset MOVE_SHELTER, 40
     learnset MOVE_CURSE, 41
     learnset MOVE_MUDDY_WATER, 44
     terminatelearnset
