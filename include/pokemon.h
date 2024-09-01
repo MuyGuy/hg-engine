@@ -897,7 +897,7 @@ void  LONG_CALL SetBoxMonData(struct BoxPokemon *boxmon, int id, const void *buf
  *  @param pos position to grab
  *  @return PartyPokemon requested
  */
-struct PartyPokemon * LONG_CALL PokeParty_GetMemberPointer(struct Party *party, int pos);
+struct PartyPokemon * LONG_CALL Party_GetMonByIndex(struct Party *party, int pos);
 
 /**
  *  @brief grab personal field accounting for form (for vanilla forms)
@@ -1424,6 +1424,14 @@ u16 LONG_CALL GetSpeciesBasedOnForm(int mons_no, int form_no);
 u16 LONG_CALL GetOriginalSpeciesBasedOnAdjustedForm(u32 mons_no);
 
 /**
+ *  @brief pass adjusted species and return form of the base species it applies to
+ *
+ *  @param mons_no species that has already been adjusted by form number by GetSpeciesBasedOnForm
+ *  @return form of adjusted species
+ */
+u16 LONG_CALL GetFormBasedOnAdjustedForm(u32 mons_no);
+
+/**
  *  @brief grab index in ARC_POKEICON from original species, egg status, and form number
  *
  *  @param mons base species index
@@ -1758,7 +1766,12 @@ u32 LONG_CALL GenerateShinyPIDKeepSubstructuresIntact(u32 otId, u32 pid);
  */
 u32 LONG_CALL GetMoveData(u16 id, u32 field);
 
+BOOL LONG_CALL Mon_UpdateRotomForm(struct PartyPokemon *mon, int form, int defaultSlot);
 
+void LONG_CALL Mon_UpdateShayminForm(struct PartyPokemon *mon, int form);
 
+void LONG_CALL Daycare_GetBothBoxMonsPtr(Daycare *dayCare, struct BoxPokemon **boxmons);
+
+BOOL LONG_CALL CanUseItemOnPokemon(struct PartyPokemon *mon, u16 itemID, s32 moveIdx, u32 heapID);
 
 #endif

@@ -52,8 +52,7 @@ BUILDROM = test.nds
 ADPCMXQ := tools/adpcm-xq
 ARMIPS := tools/armips
 BLZ := tools/blz
-BTX_EXE := tools/pngtobtx0.exe
-BTX := mono $(BTX_EXE)
+BTX := $(PYTHON) tools/overworld-btx.py
 ENCODEPWIMG := tools/ENCODE_IMG
 GFX := tools/nitrogfx
 MSGENC := tools/msgenc
@@ -106,12 +105,6 @@ $(MSGENC): tools/source/msgenc/*
 
 TOOLS += $(MSGENC)
 
-BTX_SOURCES := $(wildcard tools/source/BTXEditor/*.cs)
-$(BTX_EXE): $(BTX_SOURCES)
-	cd tools ; $(CSC) /target:exe /out:pngtobtx0.exe "source/BTXEditor/Program-P.cs" "source/BTXEditor/pngtobtx0.cs" "source/BTXEditor/BTX0.cs"
-
-TOOLS += $(BTX_EXE)
-
 $(SWAV2SWAR_EXE): tools/source/swav2swar/Principal.cs
 	cd tools ; $(CSC) /target:exe /out:swav2swar.exe "source/swav2swar/Principal.cs"
 
@@ -119,9 +112,6 @@ TOOLS += $(SWAV2SWAR_EXE)
 
 $(NDSTOOL):
 ifeq (,$(wildcard $(NDSTOOL)))
-ifeq ($(MSYS2), 0)
-	wget -O $(NDSTOOL) https://github.com/AdAstra-LD/DS-Pokemon-Rom-Editor/raw/main/DS_Map/Tools/ndstool.exe
-else
 	rm -r -f tools/source/ndstool
 	cd tools/source ; git clone https://github.com/devkitPro/ndstool.git
 	cd tools/source/ndstool ; git checkout fa6b6d01881363eb2cd6e31d794f51440791f336
@@ -131,33 +121,28 @@ else
 	mv tools/source/ndstool/ndstool tools/ndstool
 	rm -r -f tools/source/ndstool
 endif
-endif
 
 TOOLS += $(NDSTOOL)
 
 $(ARMIPS):
 ifeq (,$(wildcard $(ARMIPS)))
-ifeq ($(MSYS2), 0)
-	wget -O $(ARMIPS).7z https://github.com/Kingcom/armips/releases/download/v0.11.0/armips-v0.11.0-windows-x86.7z
-	cd tools; p7zip -d armips.7z; rm -f Readme.md
-else
 	rm -r -f tools/source/armips
-	cd tools/source ; git clone --recursive https://github.com/Kingcom/armips.git
+	cd tools/source ; git clone --recursive https://github.com/BluRosie/armips.git
+	#cd tools/source ; cp -r ~/git/armips armips
 	cd tools/source/armips ; mkdir build
 	cd tools/source/armips/build ; cmake -DCMAKE_BUILD_TYPE=Release ..
 	cd tools/source/armips/build ; cmake --build .
 	mv tools/source/armips/build/armips tools/armips
 	rm -r -f tools/source/armips
 endif
-endif
 
 TOOLS += $(ARMIPS)
 
 $(ADPCMXQ):
-ifeq (,$(wildcard $(ARMIPS)))
+ifeq (,$(wildcard $(ADPCMXQ)))
 	rm -r -f tools/source/adpcm-xq
 	cd tools/source ; git clone https://github.com/dbry/adpcm-xq.git
-	cd tools/source/adpcm-xq ; gcc -O2 *.c -o adpcm-xq
+	cd tools/source/adpcm-xq ; gcc -O2 *.c -o adpcm-xq -lm
 	mv tools/source/adpcm-xq/adpcm-xq $(ADPCMXQ)
 	rm -r -f tools/source/adpcm-xq
 endif
@@ -214,10 +199,9 @@ $(OUTPUT):$(LINK)
 
 all: $(TOOLS) $(OUTPUT) $(OVERLAY_OUTPUTS)
 	rm -rf $(BASE)
-	mkdir -p $(BASE)
-	mkdir -p $(BUILD)
+	@mkdir -p $(BASE) $(BUILD) $(BUILD)/move $(BUILD)/objects $(MOVE_SEQ_DIR) $(MOVE_SEQ_OBJ_DIR) $(BATTLE_EFF_DIR) $(BATTLE_EFF_OBJ_DIR) $(BATTLE_SUB_DIR) $(BATTLE_SUB_OBJ_DIR)
 	mkdir -p $(BUILD)/pokemonow $(BUILD)/pokemonicon $(BUILD)/pokemonpic $(BUILD)/a018 $(BUILD)/narc $(BUILD)/text $(BUILD)/move $(BUILD)/a011  $(BUILD)/rawtext
-	mkdir -p $(BUILD)/move/battle_sub_seq $(BUILD)/move/battle_eff_seq $(BUILD)/move/battle_move_seq $(BUILD)/move/move_anim $(BUILD)/move/move_sub_anim $(BUILD)/move/move_anim $(BUILD)/pw_pokegra $(BUILD)/pw_pokeicon $(BUILD)/pw_pokegra_int $(BUILD)/pw_pokeicon_int
+	mkdir -p $(BUILD)/move/move_anim $(BUILD)/move/move_sub_anim $(BUILD)/move/move_anim $(BUILD)/pw_pokegra $(BUILD)/pw_pokeicon $(BUILD)/pw_pokegra_int $(BUILD)/pw_pokeicon_int
 	###The line below is because of junk files that macOS can create which will interrupt the build process###
 	find . -name '*.DS_Store' -execdir rm -f {} \;
 	$(NDSTOOL) -x $(ROMNAME) -9 $(BASE)/arm9.bin -7 $(BASE)/arm7.bin -y9 $(BASE)/overarm9.bin -y7 $(BASE)/overarm7.bin -d $(FILESYS) -y $(BASE)/overlay -t $(BASE)/banner.bin -h $(BASE)/header.bin
@@ -227,20 +211,21 @@ all: $(TOOLS) $(OUTPUT) $(OVERLAY_OUTPUTS)
 	$(MAKE) move_narc
 	$(ARMIPS) armips/global.s
 	$(NARCHIVE) create $(FILESYS)/a/0/2/8 $(BUILD)/a028/ -nf
-	@echo "Making ROM.."
+	@echo "Making ROM..."
 	$(NDSTOOL) -c $(BUILDROM) -9 $(BASE)/arm9.bin -7 $(BASE)/arm7.bin -y9 $(BASE)/overarm9.bin -y7 $(BASE)/overarm7.bin -d $(FILESYS) -y $(BASE)/overlay -t $(BASE)/banner.bin -h $(BASE)/header.bin
-	@echo "Done."
+	@echo "Done.  See output $(BUILDROM)."
 
 ####################### Clean #######################
 clean:
 	rm -rf $(BUILD)
 	rm -rf $(BASE)
+	rm -rf rom_gen.ld rom_gen_battle.ld
 
 clean_tools:
 	rm -f $(TOOLS)
 
 clean_code:
-	rm -f $(OBJS) $(FIELD_OBJS) $(BATTLE_OBJS) $(POKEDEX_OBJS) $(LINK) $(OUTPUT) rom_gen.ld
+	rm -f $(OBJS) $(OVERLAY_OBJS) $(LINKED_OUTPUTS) $(OUTPUT) $(OVERLAY_OUTPUTS) rom_gen.ld rom_gen_battle.ld
 
 ####################### Debug #######################
 print-% : ; $(info $* is a $(flavor $*) variable set to [$($*)]) @true

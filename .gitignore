@@ -75,7 +75,7 @@ dumpitem.py
 *.DS_STORE
 armips/asm/offset.s
 .vs/
-rom_gen.ld
+rom_gen*.ld
 
 sdat/*
 *.swav
@@ -85,3 +85,6 @@ tools/swav2swar.exe
 *:Zone.Identifier
 
 *.ml*
+
+*.gbapal
+*.4bpp

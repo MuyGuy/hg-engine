@@ -21,6 +21,8 @@
 #define NELEMS_POKEFORMDATATBL 285
 
 extern u32 word_to_store_form_at;
+// [preevo] = {species, form}, [postevo] = {species, form},
+u16 ALIGN4 gEvolutionSceneOverride[2][2];
 
 /**
  *  @brief set up the indices for the new form system pictures.  if necessary, loop through the form table, searching for the new form index to load sprites from
@@ -36,6 +38,7 @@ extern u32 word_to_store_form_at;
 BOOL LONG_CALL GetOtherFormPic(MON_PIC *picdata, u16 mons_no, u8 dir, u8 col, u8 form_no)
 {
     u32 ret = FALSE;
+
     word_to_store_form_at = form_no;
 
     if (form_no != 0)
@@ -57,6 +60,20 @@ BOOL LONG_CALL GetOtherFormPic(MON_PIC *picdata, u16 mons_no, u8 dir, u8 col, u8
         sys_FreeMemoryEz(PokeFormDataTbl);
     }
     return ret;
+}
+
+void SetPartyPokemonParamsForEvoCutscene(struct PartyPokemon *mon, u16 *targetSpecies, BOOL clearEvoStructure)
+{
+    u32 form = 0;
+    if (gEvolutionSceneOverride[0][0] == *targetSpecies)
+        form = gEvolutionSceneOverride[0][1];
+    else if (gEvolutionSceneOverride[1][0] == *targetSpecies)
+        form = gEvolutionSceneOverride[1][1];
+    SetMonData(mon, MON_DATA_SPECIES, targetSpecies);
+    if (form)
+        SetMonData(mon, MON_DATA_FORM, &form);
+    if (clearEvoStructure)
+        memset(gEvolutionSceneOverride, 0, sizeof(gEvolutionSceneOverride));
 }
 
 /**
@@ -172,6 +189,33 @@ u16 LONG_CALL GetOriginalSpeciesBasedOnAdjustedForm(u32 mons_no)
             }
         }
         sys_FreeMemoryEz(PokeFormDataTbl);
+    }
+    return mons_no;
+}
+
+/**
+ *  @brief pass adjusted species and return form of the base species it applies to
+ *
+ *  @param mons_no species that has already been adjusted by form number by GetSpeciesBasedOnForm
+ *  @return form of adjusted species
+ */
+u16 LONG_CALL GetFormBasedOnAdjustedForm(u32 mons_no)
+{
+    if (mons_no > MAX_MON_NUM) {
+        struct FormData *PokeFormDataTbl = sys_AllocMemory(HEAPID_MAIN_HEAP, NELEMS_POKEFORMDATATBL * sizeof(struct FormData));
+        ArchiveDataLoad(PokeFormDataTbl, ARC_CODE_ADDONS, CODE_ADDON_FORM_DATA);
+
+        for (u32 i = 0; i < NELEMS_POKEFORMDATATBL; i++)
+        {
+            if (mons_no == PokeFormDataTbl[i].file)
+            {
+                mons_no = PokeFormDataTbl[i].form_no;
+                break;
+            }
+        }
+        sys_FreeMemoryEz(PokeFormDataTbl);
+    } else {
+        return 0; // base species are all before MAX_MON_NUM
     }
     return mons_no;
 }
@@ -687,7 +731,7 @@ u32 LONG_CALL CanUseDNASplicersGrabSplicerPos(struct PartyPokemon *pp, struct Pa
 
     for (s32 i = 0; i < ((form_no != 0) ? 6 : party->count); i++) // check all 6 party slots if looking to revert
     {
-        struct PartyPokemon *currentmon = PokeParty_GetMemberPointer(party, i);
+        struct PartyPokemon *currentmon = Party_GetMonByIndex(party, i);
         u32 species2 = GetMonData(currentmon, MON_DATA_SPECIES, NULL);
 
         if (species2 == 0 && form_no != 0) // looking for empty slot to dump reshiram to from save
@@ -764,7 +808,7 @@ u16 NatureToMintItem[] =
  */
 u32 LONG_CALL UseItemMonAttrChangeCheck(struct PLIST_WORK *wk, void *dat)
 {
-    struct PartyPokemon *pp = PokeParty_GetMemberPointer(wk->dat->pp, wk->pos);
+    struct PartyPokemon *pp = Party_GetMonByIndex(wk->dat->pp, wk->pos);
     partyMenuSignal = 0; // ensure it is 0 before potentially queuing up a different message
 
     // handle shaymin
@@ -813,7 +857,7 @@ u32 LONG_CALL UseItemMonAttrChangeCheck(struct PLIST_WORK *wk, void *dat)
             // grab reshiram from save
             // add reshiram to party--can't just use PokeParty_Add because icons freak out when you tell them to animate something that isn't there
             //PokeParty_Add(wk->dat->pp, &saveMiscData->storedMons[STORED_MONS_DNA_SPLICERS]);
-            struct PartyPokemon *reshiram = PokeParty_GetMemberPointer(wk->dat->pp, splicer_pos);
+            struct PartyPokemon *reshiram = Party_GetMonByIndex(wk->dat->pp, splicer_pos);
             *reshiram = saveMiscData->storedMons[STORED_MONS_DNA_SPLICERS];
             partyMenuSignal = 1;
 
@@ -831,7 +875,7 @@ u32 LONG_CALL UseItemMonAttrChangeCheck(struct PLIST_WORK *wk, void *dat)
         {
             // grab reshiram from party
             // store reshiram in save
-            saveMiscData->storedMons[STORED_MONS_DNA_SPLICERS] = *PokeParty_GetMemberPointer(wk->dat->pp, splicer_pos); // may have to directly memcpy this but this is good for the moment
+            saveMiscData->storedMons[STORED_MONS_DNA_SPLICERS] = *Party_GetMonByIndex(wk->dat->pp, splicer_pos); // may have to directly memcpy this but this is good for the moment
             // delete reshiram from party--splicer_pos has the position to delete
             PokeParty_Delete(wk->dat->pp, splicer_pos);
             saveMiscData->isMonStored[STORED_MONS_DNA_SPLICERS] = 1;
@@ -839,7 +883,7 @@ u32 LONG_CALL UseItemMonAttrChangeCheck(struct PLIST_WORK *wk, void *dat)
             if (splicer_pos < wk->pos) // adjust this position back so that the right pokemon's forme gets changed
             {
                 wk->pos--;
-                pp = PokeParty_GetMemberPointer(wk->dat->pp, wk->pos);
+                pp = Party_GetMonByIndex(wk->dat->pp, wk->pos);
             }
 
             if (reshiramBool) // turn to white kyurem
@@ -1015,10 +1059,12 @@ void LONG_CALL UpdatePassiveForms(struct PartyPokemon *pp)
         case SPECIES_SAWSBUCK:
             form = GrabCurrentSeason(); // update to the current season
             break;
+        case SPECIES_UNFEZANT:
         case SPECIES_FRILLISH:
         case SPECIES_JELLICENT:
         case SPECIES_MEOWSTIC:
         case SPECIES_INDEEDEE:
+        case SPECIES_OINKOLOGNE:
             form = gf_rand() & 1; // 1/2 male
             break;
         case SPECIES_BASCULEGION:
@@ -1026,6 +1072,33 @@ void LONG_CALL UpdatePassiveForms(struct PartyPokemon *pp)
             break;
         case SPECIES_PYROAR:
             form = (gf_rand() % 8 != 0); // 1/8 male
+            break;
+        case SPECIES_DUNSPARCE:
+        case SPECIES_DUDUNSPARCE:
+        case SPECIES_TANDEMAUS:
+        case SPECIES_MAUSHOLD:
+            form = (gf_rand() % 100 != 0); // 1/100 three seg / family of three
+            break;
+        case SPECIES_FLABEBE:
+        case SPECIES_FLOETTE:
+        case SPECIES_FLORGES:
+            form = gf_rand() % 5; // allow any color to show up
+            break;
+        case SPECIES_PUMPKABOO:
+        case SPECIES_GOURGEIST:
+            form = gf_rand() % 4; // allow any size to show up
+            break;
+        case SPECIES_MINIOR:
+            form = gf_rand() % 7; // allow any color to show up
+            break;
+        case SPECIES_SINISTEA:
+        case SPECIES_POLTEAGEIST:
+        case SPECIES_SINISTCHA:
+        case SPECIES_POLTCHAGEIST:
+            form = (gf_rand() % 20 != 0); // 5% authentic / masterpiece
+            break;
+        case SPECIES_TATSUGIRI:
+            form = gf_rand() % 3; // equal chance for all forms
             break;
         default:
             shouldUpdate = FALSE;
@@ -1049,7 +1122,7 @@ BOOL LONG_CALL Party_UpdateDeerlingSeasonForm(struct Party *party)
 
     for (int i = 0; i < party->count; i++)
     {
-        struct PartyPokemon *pp = PokeParty_GetMemberPointer(party, i);
+        struct PartyPokemon *pp = Party_GetMonByIndex(party, i);
         u32 species = GetMonData(pp, MON_DATA_SPECIES, NULL);
         u32 newForm = GrabCurrentSeason();
         if (newForm != GetMonData(pp, MON_DATA_FORM, NULL) && (species == SPECIES_DEERLING || species == SPECIES_SAWSBUCK))
@@ -1178,29 +1251,25 @@ u32 LONG_CALL CheckIfMonsAreEqual(struct PartyPokemon *pokemon1, struct PartyPok
     return FALSE;
 }
 
+/**
+ *  @brief check if can use item on mon in party.  subfunction checks everything and is only used here, so we hook this to save space and add what we need.
+ *
+ *  @param party party structure
+ *  @param itemID item index that is being used
+ *  @param partyIdx position in party
+ *  @param moveIdx move position to check if needed
+ *  @param heapID heap to use for allocations
+ *  @return TRUE if can use item, FALSE otherwise
+ */
+BOOL CanUseItemOnMonInParty(struct Party *party, u16 itemID, s32 partyIdx, s32 moveIdx, u32 heapID) {
+    struct PartyPokemon *mon = Party_GetMonByIndex(party, partyIdx);
 
-// top 5 bits are now form bit
-// if the form is nonzero, have to set it to that form.  most mons should keep their forms on evolution, but specifically significant gendered mons will need to not
-#define GET_TARGET_AND_SET_FORM { \
-    if (party != NULL) \
-    { \
-        for (j = 0; j < party->count; j++) \
-        { \
-            ppFromParty = PokeParty_GetMemberPointer(party, j); \
-            if (CheckIfMonsAreEqual(pokemon, ppFromParty)) \
-                break; \
-        } \
-        target = evoTable[i].target & 0x7FF; \
-        form = evoTable[i].target >> 11; \
-        if (form != 0) { \
-            SetMonData(ppFromParty, MON_DATA_FORM, &form); \
-        } \
-    } \
-    else { \
-        target = evoTable[i].target & 0x7FF; \
-        form = evoTable[i].target >> 11; \
-        SetMonData(pokemon, MON_DATA_FORM, &form); \
-    } \
+    if (GetItemData(itemID, ITEM_PARAM_LEVEL_UP, heapID) && GetMonData(mon, MON_DATA_LEVEL, NULL) == 100 && GetMonEvolution(party, mon, EVOCTX_LEVELUP, itemID, NULL))
+    {
+        return TRUE;
+    }
+
+    return CanUseItemOnPokemon(mon, itemID, moveIdx, heapID);
 }
 
 /**
@@ -1511,7 +1580,7 @@ void LONG_CALL CreateBoxMonData(struct BoxPokemon *boxmon, int species, int leve
 bool8 LONG_CALL RevertFormChange(struct PartyPokemon *pp, u16 species, u8 form_no)
 {
     u32 i, ret = FALSE;
-    int work = 0;
+    int work;
 
     // use this chance to make bad poisoning normal poison at the end of battle
     work = GetMonData(pp, MON_DATA_STATUS, NULL);
@@ -1521,6 +1590,7 @@ bool8 LONG_CALL RevertFormChange(struct PartyPokemon *pp, u16 species, u8 form_n
         work |= STATUS_FLAG_POISONED;
         SetMonData(pp, MON_DATA_STATUS, &work);
     }
+    work = 0; // reset work variable so that the form is fine
 
     if (form_no != 0)
     {
@@ -1698,19 +1768,23 @@ u32 storeShayminForm = 0;
 u32 GrabCryNumSpeciesForm(u32 species, u32 form)
 {
     u32 newSpecies = 0;
-    if (species > SPECIES_ARCEUS && species < SPECIES_VICTINI)
-    {
+
+    // manually map all of the limbo slots to bulbasaur's cry
+    if (species > SPECIES_ARCEUS && species < SPECIES_VICTINI) {
         species = SPECIES_BULBASAUR;
     }
 
-    if (species > MAX_MON_NUM) // battles are fucking stupid and pass in species already adjusted for form.  need to revert to base species
-    {
+    //debug_printf("[GrabCryNumSpeciesForm] species = %d, form = %d\n", species, form)
+
+    // battles are fucking stupid and pass in species already adjusted for form.  need to revert to base species and extract form
+    if (species > MAX_MON_NUM) {
         // if form-adjusted species is passed in, no need to call it to grab it again
         newSpecies = species;
+        form = GetFormBasedOnAdjustedForm(species);
         species = GetOriginalSpeciesBasedOnAdjustedForm(species);
     }
-    else if (species == SPECIES_SHAYMIN) // shaymin has to have some hacks to get this to work proper because of the same battle stuff above
-    {
+    // shaymin has to have some hacks to get this to work proper because of the same battle stuff above
+    else if (species == SPECIES_SHAYMIN) {
         register u32 retAddr asm("lr");
         if (retAddr == 0x020069BF)
             storeShayminForm = form;
@@ -1718,7 +1792,7 @@ u32 GrabCryNumSpeciesForm(u32 species, u32 form)
             if (!storeShayminForm)
                 return species;
     }
-    else if (form == 0)
+    else if (form == 0) // can just return species for the cry if it is base form
     {
         return species;
     }
@@ -1919,7 +1993,9 @@ u32 SpeciesAndFormeToWazaOshieIndex(u32 species, u32 form)
  */
 u32 GetLevelCap(void)
 {
-    return GetScriptVar(LEVEL_CAP_VARIABLE);
+    u32 levelCap = GetScriptVar(LEVEL_CAP_VARIABLE);
+    if (levelCap > 100) levelCap = 100;
+    return levelCap;
 }
 
 /**

@@ -217,7 +217,7 @@
 #define ITEM_JABOCA_BERRY    211
 #define ITEM_ROWAP_BERRY     212
 
-#define IS_ITEM_BERRY(item) (item >= ITEM_CHERI_BERRY && item <= ITEM_ROWAP_BERRY)
+#define IS_ITEM_BERRY(item) ((item >= ITEM_CHERI_BERRY && item <= ITEM_ROWAP_BERRY) || (item >= ITEM_ROSELI_BERRY && item <= ITEM_MARANGA_BERRY))
 
 #define ITEM_BRIGHT_POWDER   213
 #define ITEM_WHITE_HERB      214
@@ -853,14 +853,26 @@
 #define ITEM_NAIVE_MINT         (ITEM_PIXIE_PLATE + 206)
 #define ITEM_SERIOUS_MINT       (ITEM_PIXIE_PLATE + 207)
 
+//Gen IX DLC
+#define ITEM_FAIRY_FEATHER      (ITEM_PIXIE_PLATE + 208)
+#define ITEM_SYRUPY_APPLE       (ITEM_PIXIE_PLATE + 209)
+#define ITEM_UNREMARKABLE_TEACUP (ITEM_PIXIE_PLATE + 210)
+#define ITEM_MASTERPIECE_TEACUP (ITEM_PIXIE_PLATE + 211)
+#define ITEM_CORNERSTONE_MASK   (ITEM_PIXIE_PLATE + 212)
+#define ITEM_WELLSPRING_MASK    (ITEM_PIXIE_PLATE + 213)
+#define ITEM_HEARTHFLAME_MASK   (ITEM_PIXIE_PLATE + 214)
+#define ITEM_METAL_ALLOY        (ITEM_PIXIE_PLATE + 215)
+
 #define NUM_MEGA_STONES 48 // includes the pixie plate
 
 #define IS_ITEM_TERRAIN_SEED(item) (item >= ITEM_ELECTRIC_SEED && item <= ITEM_PSYCHIC_SEED)
 
+#define IS_ITEM_MASK(item) (item >= ITEM_CORNERSTONE_MASK && item <= ITEM_HEARTHFLAME_MASK)
+
 #define NUM_UNKNOWN_SLOTS 22 // used to adjust in data/itemdata.c
 #define NUM_UNKNOWN_SLOTS_EXPLORER_KIT (NUM_UNKNOWN_SLOTS+1) // used to adjust in data/itemdata.c
 
-#define NEW_ITEM_MAX ITEM_TEA
+#define NEW_ITEM_MAX ITEM_METAL_ALLOY
 
 #define BAG_SLOT_QUANTITY_MAX                    999
 #define BAG_TMHM_QUANTITY_MAX                     99

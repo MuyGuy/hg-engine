@@ -4,7 +4,8 @@
 .include "armips/include/config.s"
 .include "armips/include/constants.s"
 .include "armips/include/macros.s"
-.include "armips/include/monnums.s"
+
+.include "asm/include/species.inc"
 //.include "armips/asm/overworlds.s"
 
 .open "base/arm9.bin", 0x02000000
@@ -2053,7 +2054,7 @@ NumOfOWFormsPerMon:
 /* SPECIES_WYRDEER         */ .byte 0
 /* SPECIES_KLEAVOR         */ .byte 0
 /* SPECIES_URSALUNA        */ .byte 1
-/* SPECIES_BASCULEGION     */ .byte 0
+/* SPECIES_BASCULEGION     */ .byte 1
 /* SPECIES_SNEASLER        */ .byte 0
 /* SPECIES_OVERQWIL        */ .byte 0
 /* SPECIES_ENAMORUS        */ .byte 1
